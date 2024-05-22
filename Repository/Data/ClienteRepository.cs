@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Dapper;
+using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 
@@ -13,97 +14,100 @@ namespace Repository.Data
   
         public class ClienteRepository : ICliente
         {
-            private IDbConnection conexionDB;
-            public ClienteRepository(string _connectionString)
-            {
-                conexionDB = new DbConection(_connectionString).dbConnection();
-            }
-            public bool add(ClienteModel cliente)
-            {
-                try
-            {
-                if (conexionDB.Execute("insert into cliente (id, id_banco, nombre, apellido,documento, direccion, mail, celular, estado) values (@id, @id_banco, @nombre, @apellido, @documento, @direccion, @mail, @celular, @estado)", cliente) > 0)
-                        return true;
-                    else
-                        return false;
-                }
-                catch (Exception ex)
-                {
+        
+        private readonly ApplicationDbContext _context;
+       
+        public ClienteRepository(ApplicationDbContext context)
 
-                    throw ex;
-                }
-            }
-
-            public ClienteModel get(string documento)
-            {
-                try
-            {
-                return conexionDB.Query<ClienteModel>("Select * from Cliente where documento = @documento", new { documento }).FirstOrDefault();
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-
-                    
-
-            }
-
-            public IEnumerable<ClienteModel> list()
-            {
-            try
-            {
-                return conexionDB.Query<ClienteModel>("Select * from Cliente");
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-
+        {
+           
+            _context = context;
         }
-
-        public bool remove(string documento)
-            {
-            try
-            {
-                if (conexionDB.Execute("Delete from Cliente where documento = @documento", new { documento }) > 0)
-                    return true;
-                else
-                    return false;
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-
-        }
-
-
-        public bool update(ClienteModel cliente)
+       
+        public async Task<bool> add(ClienteModel cliente)
         {
             try
             {
-                if (conexionDB.Execute("Update Cliente set id = @id, id_banco = @id_banco, nombre = @nombre, " +
-                    "apellido = @apellido, direccion = @direccion, mail = @mail, celular = @celular, estado = @estado " +
-                    "where documento = @documento", cliente) > 0)
-                    return true;
-                else
-                    return false;
+                await _context.ClientesEF.AddAsync(cliente);
+                return await _context.SaveChangesAsync() > 0;
             }
             catch (Exception ex)
             {
-                throw ex;
+                throw new Exception("Error al agregar cliente", ex);
+            }
+        }
+
+        
+        public async Task<ClienteModel> get(int id)
+        {
+            try
+            {
+                return await _context.ClientesEF.FindAsync(id);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al obtener cliente", ex);
+            }
+        }
+
+                    
+
+         
+
+   
+        public async Task<IEnumerable<ClienteModel>> list()
+        {
+            try
+            {
+                return await _context.ClientesEF.ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al listar las facturas", ex);
+            }
+        }
+
+      
+        public async Task<bool> remove(int id)
+        {
+            try
+            {
+                var cliente = await _context.ClientesEF.FindAsync(id);
+                if (cliente != null)
+                {
+                    _context.ClientesEF.Remove(cliente);
+                    return await _context.SaveChangesAsync() > 0;
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al eliminar cliente", ex);
             }
 
+        }
+
+
+      
+        public async Task<bool> update(ClienteModel cliente)
+        {
+            try
+            {
+                _context.ClientesEF.Update(cliente);
+                return await _context.SaveChangesAsync() > 0;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al actualizar cliente", ex);
+            }
 
 
         }
 
        
 
-        // public bool update(ClienteModel cliente)
-        // {
-        //      throw new NotImplementedException();
-        // }
+
+
+       
     }
 }

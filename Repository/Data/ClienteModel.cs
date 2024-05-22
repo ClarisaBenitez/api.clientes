@@ -1,14 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace Repository.Data
 {
     public class ClienteModel
     {
         public int id { get; set; }
+
+        [Required]
+        [Display(Name = "Banco ID")]
         public int id_banco { get; set; }
 
         public string nombre { get; set; }

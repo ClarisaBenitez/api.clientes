@@ -8,10 +8,10 @@ namespace Repository.Data
 {
     public interface IFactura
     {
-        bool add(FacturaModel factura);
-        bool remove(string factura);
-        bool update(FacturaModel factura);
-        FacturaModel get(string id);
-        IEnumerable<FacturaModel> list();
+        Task<bool> add(FacturaModel factura);
+        Task<bool> remove(int id);
+        Task<bool> update(FacturaModel factura);
+        Task<FacturaModel> get(int id);
+        Task<IEnumerable<FacturaModel>> list();
     }
 }

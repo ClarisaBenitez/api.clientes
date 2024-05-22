@@ -1,101 +1,83 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Dapper;
-using Npgsql;
+﻿using Microsoft.EntityFrameworkCore;
+using Repository.Data;
 
 namespace Repository.Data
 {
     public class FacturaRepository : IFactura
     {
-        private IDbConnection conexionDB;
-        public FacturaRepository(string _connectionString)
+        private readonly ApplicationDbContext _context;
+
+        public FacturaRepository(ApplicationDbContext context)
         {
-            conexionDB = new DbConection(_connectionString).dbConnection();
+            _context = context;
         }
 
-
-        public bool add(FacturaModel factura)
+        public async Task<bool> add(FacturaModel factura)
         {
             try
             {
-                if (conexionDB.Execute("insert into factura (id, id_cliente, nro_factura, fecha_hora,total, total_iva5, total_iva10, total_iva, total_letras, sucursal) values (@id, @id_cliente, @nro_factura, @fecha_hora, @total, @total_iva5, @total_iva10, @total_iva, @total_letras, @sucursal)", factura) > 0)
-                    return true;
-                else
-                    return false;
+                await _context.FacturasEF.AddAsync(factura);
+                return await _context.SaveChangesAsync() > 0;
             }
             catch (Exception ex)
             {
-
-                throw ex;
-
-
-               // throw new NotImplementedException();
+                throw new Exception("Error al agregar la factura", ex);
+            }
         }
-        }
-        public FacturaModel get(string nro_factura)
+
+        public async Task<FacturaModel> get(int id)
         {
-                try
+            try
+            {
+                return await _context.FacturasEF.FindAsync(id);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al obtener la factura", ex);
+            }
+        }
+
+        public async Task<IEnumerable<FacturaModel>> list()
+        {
+            try
+            {
+                return await _context.FacturasEF.ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al listar las facturas", ex);
+            }
+        }
+
+        public async Task<bool> remove(int id)
+        {
+            try
+            {
+                var factura = await _context.FacturasEF.FindAsync(id);
+                if (factura != null)
                 {
-                    return conexionDB.Query<FacturaModel>("Select * from Factura where nro_factura = @nro_factura", new { nro_factura }).FirstOrDefault();
+                    _context.FacturasEF.Remove(factura);
+                    return await _context.SaveChangesAsync() > 0;
                 }
-                catch (Exception ex)
-                {
-                    throw ex;
-
-                    //throw new NotImplementedException();
-                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al eliminar la factura", ex);
+            }
         }
 
-        public IEnumerable<FacturaModel> list()
+        public async Task<bool> update(FacturaModel factura)
         {
-                    try
-                    {
-                        return conexionDB.Query<FacturaModel>("Select * from Factura");
-                    }
-                    catch (Exception ex)
-                    {
-                        throw ex;
-                    }
-                    //throw new NotImplementedException();
-                }
-
-        public bool remove(string nro_factura)
-        {
-                    try
-                    {
-                        if (conexionDB.Execute("Delete from Factura where nro_factura = @nro_factura", new { nro_factura }) > 0)
-                            return true;
-                        else
-                            return false;
-                    }
-                    catch (Exception ex)
-                    {
-                        throw ex;
-                    }
-
-                 //   throw new NotImplementedException();
-        }
-
-        public bool update(FacturaModel factura)
-        {
-                    try
-                    {
-                        if (conexionDB.Execute("Update Factura set id = @id, id_cliente = @id_cliente, sucursal = @sucursal, " +
-                            "fecha_hora = @fecha_hora, total = @total, total_iva5 = @total_iva5, total_iva10 = @total_iva10, total_iva = @total_iva, total_letras= @total_letras " +
-                            "where nro_factura = @nro_factura", factura) > 0)
-                            return true;
-                        else
-                            return false;
-                    }
-                    catch (Exception ex)
-                    {
-                        throw ex;
-                    }
+            try
+            {
+                _context.FacturasEF.Update(factura);
+                return await _context.SaveChangesAsync() > 0;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al actualizar la factura", ex);
+            }
         }
     }
-    }
-
+}

@@ -1,67 +1,106 @@
-﻿using Repository.Data;
+﻿using System.Globalization;
+
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Repository.Data;
 
 namespace Services.Logica
 {
-    public class FacturaService
+    public  class FacturaService
     {
-       
-            FacturaRepository facturaRepository;
+        private readonly IFactura _facturaRepository;
 
-            public FacturaService(string connectionString)
-            {
-                facturaRepository = new FacturaRepository(connectionString);
-            }
-            public bool add(FacturaModel modelo)
-            {
-                if (validacionFactura(modelo))
-                    return facturaRepository.add(modelo);
-                else
-                    return false;
-            }
-
-            public object get(string nro_factura)
-            {
-                throw new NotImplementedException();
-            }
-
-            public object list()
-            {
-                throw new NotImplementedException();
-            }
-
-            public bool remove(string nro_factura)
-            {
-                throw new NotImplementedException();
-            }
-
-            private bool validacionFactura(FacturaModel factura)
-            {
-            // Validación del número de factura
-            if (!Regex.IsMatch(factura.nro_factura, @"^\d{3}-\d{3}-\d{6}$"))
-                throw new ArgumentException("Error al agregar factura: El número de factura no cumple con el formato requerido.");
-            //return false;
-
-            // Validación de los campos numéricos
-            if (factura.total <= 0 || factura.total_iva5 <= 0 || factura.total_iva10 <= 0 || factura.total_iva <= 0)
-                throw new ArgumentException("Error al agregar factura: Los campos numéricos de la factura son inválidos.");
-
-
-            //return false;
-
-            // Validación del total en letras
-            if (string.IsNullOrWhiteSpace(factura.total_letras) || factura.total_letras.Length < 6)
-                throw new ArgumentException("Error al agregar factura: El campo 'Total en letras' de la factura es obligatorio y debe tener al menos 6 caracteres.");
-            //return false;
-
-            return true;
-           }
-
+        public FacturaService(IFactura facturaRepository)
+        {
+            _facturaRepository = facturaRepository;
         }
-    }
 
+        public async Task<bool> Add(FacturaModel factura)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(factura.total_letras) || factura.total_letras.Length < 6)
+                {
+                    throw new ArgumentException("El campo 'Total en letras' es obligatorio y debe tener al menos 6 caracteres.");
+                }
+                factura.total_iva5 = (int)CalculateIva5(factura.total);
+                factura.total_iva10 = (int)CalculateIva10(factura.total);
+                factura.total_iva = (int)CalculateTotalIva(factura.total);
+                //factura.TotalLetras = ConvertNumberToWords((int)factura.Total);
+                return await _facturaRepository.add(factura);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al agregar la factura", ex);
+            }
+        }
+
+        public async Task<bool> Update(FacturaModel factura)
+        {
+            try
+            {
+                factura.total_iva5 = (int)CalculateIva5(factura.total);
+                factura.total_iva10 = (int)CalculateIva10(factura.total);
+                factura.total_iva = (int)CalculateTotalIva(factura.total);
+                //factura.TotalLetras = ConvertNumberToWords((int)factura.Total);
+                return await _facturaRepository.update(factura);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al actualizar la factura", ex);
+            }
+        }
+
+        public async Task<bool> Remove(int id)
+        {
+            try
+            {
+                return await _facturaRepository.remove(id);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al eliminar la factura", ex);
+            }
+        }
+
+        public async Task<FacturaModel> Get(int id)
+        {
+            try
+            {
+                return await _facturaRepository.get(id);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al obtener la factura", ex);
+            }
+        }
+
+        public async Task<IEnumerable<FacturaModel>> List()
+        {
+            try
+            {
+                return await _facturaRepository.list();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al listar las facturas", ex);
+            }
+        }
+
+        public static decimal CalculateIva5(decimal amount)
+            => amount * 0.05m; // 5% de IVA
+
+        public static decimal CalculateIva10(decimal amount)
+            => amount * 0.10m; // 10% de IVA
+
+        public static decimal CalculateTotalIva(decimal amount)
+        {
+            decimal iva5 = CalculateIva5(amount);
+            decimal iva10 = CalculateIva10(amount);
+            return iva5 + iva10;
+        }
+
+       // public static string ConvertNumberToWords(int number) 
+    }
+}

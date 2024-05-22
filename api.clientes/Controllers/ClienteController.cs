@@ -6,69 +6,117 @@ using System.Diagnostics.Eventing.Reader;
 
 namespace api.clientes.Controllers
 {
-    //[ApiController]
-    //[Route("/Api/v1/")]
+    [ApiController]
+    [Route("[controller]")]
     public class ClienteController : Controller
     {
-        private ClienteService clienteService;
-        private ClienteRepository clienteRepository;
+    
+        private readonly IConfiguration _configuration;
+        private readonly ClienteService _clienteService;
 
-        public ClienteController(IConfiguration configuracion)
+
+
+        public ClienteController(IConfiguration configuration, ClienteService clienteService)
         {
-            clienteService = new ClienteService(configuracion.GetConnectionString("postgres"));
-            clienteRepository = new ClienteRepository(configuracion.GetConnectionString("postgres"));
+            _configuration = configuration;
+            _clienteService = clienteService;
         }
-
 
 
         // GET: ClienteController/Create
-        [HttpPost("AGREGAR")]
-        public ActionResult Add(Repository.Data.ClienteModel cliente)
+        [HttpPost("AgregarCliente")]
+        public async Task<IActionResult> Add(
+            [FromQuery] int id,
+            [FromQuery] int id_banco,
+            [FromQuery] string nombre,
+            [FromQuery] string apellido,
+            [FromQuery] string documento,
+            [FromQuery] string direccion,
+            [FromQuery] string mail,
+            [FromQuery] string celular,
+            [FromQuery] string estado)
         {
+            if (string.IsNullOrWhiteSpace(nombre) || nombre.Length < 3 ||
+                string.IsNullOrWhiteSpace(apellido) || apellido.Length < 3 ||
+                string.IsNullOrWhiteSpace(documento) || documento.Length < 3)
+            {
+                return BadRequest("Error al agregar cliente: Asegurese de que el nombre, apellido y documento tengan al menos 3 caracteres.");
+            }
+
+            if (string.IsNullOrWhiteSpace(celular) || celular.Length != 10 || !EsNumero(celular))
+            {
+                return BadRequest("Error al agregar cliente: El celular debe ser un número de 10 dígitos.");
+            }
+
+            var cliente = new ClienteModel
+            {
+                id = id,
+                id_banco = id_banco,
+                nombre = nombre,
+                apellido = apellido,
+                documento = documento,
+                direccion = direccion,
+                mail = mail,
+                celular = celular,
+                estado = estado
+            };
+
             try
             {
-                if (clienteService.add(cliente))
-            return Ok("Cliente agregado correctamente");
+                if (await _clienteService.Add(cliente))
+                    return Ok("Cliente agregado correctamente");
                 else
-                    return BadRequest("Error al agregar cliente: Asegúrese de que el nombre, apellido y documento tengan al menos 3 caracteres.");
-
-            //else ojito
-              //  return BadRequest("Error al agregar cliente"); ojito
-        }
-        catch (Exception ex)
-            {
-                return BadRequest($"Error al actualizar cliente: {ex.Message}");
-               // return BadRequest(ex.Message); ojito
-    }
-
-
-    // return Json(new { success = true }); 
-}
-
-// POST: ClienteController/Create
-[HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult Create(IFormCollection collection)
-        {
-            try
-            {
-                return RedirectToAction(nameof(Index));
+                    return BadRequest("Error al agregar cliente");
             }
-            catch
+            catch (Exception ex)
             {
-                return View();
+                return BadRequest(ex.Message);
             }
         }
+
 
         // GET: ClienteController/Edit/5
-        [HttpPost("Actualizar")]
-        public ActionResult update(ClienteModel cliente)
+        [HttpPut("ActualizarCliente")]
+        public async Task<IActionResult> Update(
+            [FromQuery] int id,
+            [FromQuery] int id_banco,
+            [FromQuery] string nombre,
+            [FromQuery] string apellido,
+            [FromQuery] string documento,
+            [FromQuery] string direccion,
+            [FromQuery] string mail,
+            [FromQuery] string celular,
+            [FromQuery] string estado)
         {
+            if (string.IsNullOrWhiteSpace(nombre) || nombre.Length < 3 ||
+                string.IsNullOrWhiteSpace(apellido) || apellido.Length < 3 ||
+                string.IsNullOrWhiteSpace(documento) || documento.Length < 3)
+            {
+                return BadRequest("Error al actualizar cliente: Asegurese de que el nombre, apellido y documento tengan tener al menos 3 caracteres.");
+            }
+
+            if (string.IsNullOrWhiteSpace(celular) || celular.Length != 10 || !EsNumero(celular))
+            {
+                return BadRequest("Error al actualizar cliente: El celular debe ser un número de 10 dígitos.");
+            }
+
+            var cliente = new ClienteModel
+            {
+                id = id,
+                id_banco = id_banco,
+                nombre = nombre,
+                apellido = apellido,
+                documento = documento,
+                direccion = direccion,
+                mail = mail,
+                celular = celular,
+                estado = estado
+            };
+
             try
             {
-                if (clienteRepository.update(cliente))
+                if (await _clienteService.Update(cliente))
                     return Ok("Cliente actualizado correctamente");
-
                 else
                     return BadRequest("Error al actualizar cliente");
             }
@@ -76,37 +124,20 @@ namespace api.clientes.Controllers
             {
                 return BadRequest(ex.Message);
             }
-
-
-         //   return View();
         }
 
-        // POST: ClienteController/Edit/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult Edit(int id, IFormCollection collection)
-        {
-            try
-            {
-                return RedirectToAction(nameof(Index));
-            }
-            catch
-            {
-                return View();
-            }
-        }
+
 
         // GET: ClienteController/Delete/5
-        [HttpPut]
-        [Route("ELIMINAR")]
+        [HttpDelete]
+        [Route("EliminarCliente/{id}")]
 
-        public ActionResult remove(string documento)
+        public async Task<IActionResult> Remove(int id)
         {
             try
             {
-                if (clienteRepository.remove(documento))
+                if (await _clienteService.Remove(id))
                     return Ok("Cliente eliminado correctamente");
-
                 else
                     return BadRequest("Error al eliminar cliente");
             }
@@ -114,63 +145,54 @@ namespace api.clientes.Controllers
             {
                 return BadRequest(ex.Message);
             }
-            //  return View();
         }
 
         [HttpGet]
-        [Route("CONSULTAR")]
-        public ActionResult get(string documento)
+        [Route("ConsultarCliente")]
+        public async Task<IActionResult> Get(int id)
         {
             try
             {
-                var cliente = clienteRepository.get(documento);
+                var cliente = await _clienteService.Get(id);
                 if (cliente != null)
                     return Ok(cliente);
                 else
-                    return BadRequest("Cliente no encontrado");
+                    return NotFound("Cliente no encontrado");
             }
             catch (Exception ex)
             {
                 return BadRequest(ex.Message);
             }
-
-
-            //  return View();
         }
 
         [HttpGet]
-        [Route("LISTA")]
-        public ActionResult list()
+        [Route("ListarCliente")]
+        public async Task<IActionResult> List()
         {
             try
             {
-                var clientes = clienteRepository.list();
+                var clientes = await _clienteService.List();
                 if (clientes != null)
                     return Ok(clientes);
                 else
-                    return BadRequest("No hay clientes registrados");
+                    return NoContent();
             }
             catch (Exception ex)
             {
                 return BadRequest(ex.Message);
             }
         }
-
-
-
-        // POST: ClienteController/Delete/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult Delete(int id, IFormCollection collection)
+        private bool EsNumero(string celular)
         {
-            try
+            foreach (char c in celular)
             {
-                return RedirectToAction(nameof(Index));
+                if (!char.IsDigit(c))
+                    return false;
             }
-            catch
-            {
-                return View();
-            }
+            return true;
         }
+
+
+
     }
 }

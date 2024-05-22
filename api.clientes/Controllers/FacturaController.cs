@@ -3,35 +3,76 @@ using Microsoft.AspNetCore.Mvc;
 using Repository.Data;
 using Services.Logica;
 using System.Diagnostics.Eventing.Reader;
+using System.Text.RegularExpressions;
 
 namespace api.clientes.Controllers
 {
-    //[ApiController]
-    //[Route("/Api/v1/")]
+    [ApiController]
+    [Route("[controller]")]
+
 
 
     public class FacturaController : Controller
     {
 
-        private FacturaService facturaService;
-        private FacturaRepository facturaRepository;
+        private readonly IConfiguration _configuration;
+        private readonly FacturaService _facturaService;
 
-        public FacturaController(IConfiguration configuracion)
+        public FacturaController(IConfiguration configuration, FacturaService facturaService)
         {
-            facturaService = new FacturaService(configuracion.GetConnectionString("postgres"));
-            facturaRepository = new FacturaRepository(configuracion.GetConnectionString("postgres"));
+            _configuration = configuration;
+            _facturaService = facturaService;
         }
+
 
         //---------------------------------------------------------------------
         // GET: FacturaController/Create
-        [HttpPost("Add")]
-        public ActionResult Add(Repository.Data.FacturaModel factura)
+        [HttpPost("AgregarFactura")]
+        public async Task<IActionResult> Add(
+            [FromQuery] int id,
+            [FromQuery] int id_cliente,
+            [FromQuery] string nro_factura,
+            [FromQuery] string fecha_hora,
+            [FromQuery] int total,
+            [FromQuery] int total_iva5,
+            [FromQuery] int total_iva10,
+            [FromQuery] int total_iva,
+            [FromQuery] string total_letras,
+            [FromQuery] string sucursal)
         {
+            if (!EsNumeroFacturaValido(nro_factura))
+            {
+                return BadRequest("El número de factura no es válido. Debe seguir el patrón: 3 números, guion, 3 números, guion, 6 números.");
+            }
+
+            if (total <= 0 || total_iva5 < 0 || total_iva10 < 0 || total_iva < 0)
+            {
+                return BadRequest("Total, Total_iva5, Total_iva10 y Total_iva son obligatorios y deben ser valores numéricos positivos.");
+            }
+
+            if (string.IsNullOrWhiteSpace(total_letras) || total_letras.Length < 6)
+            {
+                return BadRequest("Error al agregar factura: El campo 'Total en letras' es obligatorio y debe tener al menos 6 caracteres.");
+            }
+
+            var factura = new FacturaModel
+            {
+                id = id,
+                id_cliente = id_cliente,
+                nro_factura = nro_factura,
+                fecha_hora = fecha_hora,
+                total = total,
+                total_iva5 = total_iva5,
+                total_iva10 = total_iva10,
+                total_iva = total_iva,
+                total_letras = total_letras,
+                sucursal = sucursal
+            };
+
             try
             {
-                if (facturaService.add(factura))
-                    return Ok("Factura agregado correctamente");
-
+                if (await _facturaService.Add(factura))
+                    return Ok("Factura agregada correctamente");
                 else
                     return BadRequest("Error al agregar factura");
             }
@@ -39,20 +80,56 @@ namespace api.clientes.Controllers
             {
                 return BadRequest(ex.Message);
             }
-
-
-            // return Json(new { success = true }); 
         }
 
+
         // GET: FacturaController/Edit/5
-        [HttpPost("Update")]
-        public ActionResult Update(FacturaModel factura)
+        [HttpPut("ActualizarFactura")]
+        public async Task<IActionResult> Update(
+            [FromQuery] int id,
+            [FromQuery] int id_cliente,
+            [FromQuery] string nro_factura,
+            [FromQuery] string fecha_hora,
+            [FromQuery] int total,
+            [FromQuery] int total_iva5,
+            [FromQuery] int total_iva10,
+            [FromQuery] int total_iva,
+            [FromQuery] string total_letras,
+            [FromQuery] string sucursal)
         {
+            if (!EsNumeroFacturaValido(nro_factura))
+            {
+                return BadRequest("El número de factura no es válido. Debe seguir el patrón: 3 números, guion, 3 números, guion, 6 números.");
+            }
+
+            if (total <= 0 || total_iva5 < 0 || total_iva10 < 0 || total_iva < 0)
+            {
+                return BadRequest("Total, Total_iva5, Total_iva10 y Total_iva son obligatorios y deben ser valores numéricos positivos.");
+            }
+
+            if (string.IsNullOrWhiteSpace(total_letras) || total_letras.Length < 6)
+            {
+                return BadRequest("Error al actualizar factura: El campo 'Total en letras' es obligatorio y debe tener al menos 6 caracteres.");
+            }
+
+            var factura = new FacturaModel
+            {
+                id = id,
+                id_cliente = id_cliente,
+                nro_factura = nro_factura,
+                fecha_hora = fecha_hora,
+                total = total,
+                total_iva5 = total_iva5,
+                total_iva10 = total_iva10,
+                total_iva = total_iva,
+                total_letras = total_letras,
+                sucursal = sucursal
+            };
+
             try
             {
-                if (facturaRepository.update(factura))
-                    return Ok("Factura actualizado correctamente");
-
+                if (await _facturaService.Update(factura))
+                    return Ok("Factura actualizada correctamente");
                 else
                     return BadRequest("Error al actualizar factura");
             }
@@ -60,24 +137,19 @@ namespace api.clientes.Controllers
             {
                 return BadRequest(ex.Message);
             }
-
-
-            //   return View();
         }
 
 
-
         // GET: FacturaController/Delete/5
-        [HttpPut]
-        [Route("remove")]
+        [HttpDelete]
+        [Route("EliminarFactura")]
 
-        public ActionResult remove(string nro_factura)
+        public async Task<IActionResult> Remove(int id)
         {
             try
             {
-                if (facturaRepository.remove(nro_factura))
+                if (await _facturaService.Remove(id))
                     return Ok("Factura eliminado correctamente");
-
                 else
                     return BadRequest("Error al eliminar factura");
             }
@@ -85,42 +157,38 @@ namespace api.clientes.Controllers
             {
                 return BadRequest(ex.Message);
             }
-            //  return View();
         }
 
         [HttpGet]
-        [Route("get")]
-        public ActionResult get(string nro_factura)
-        {
-            try
+        [Route("ConsultarFactura")]
+            public async Task<IActionResult> Get(int id)
             {
-                var factura = facturaRepository.get(nro_factura);
-                if (factura != null)
-                    return Ok(factura);
-                else
-                    return BadRequest("Factura no encontrado");
+                try
+                {
+                    var factura = await _facturaService.Get(id);
+                    if (factura != null)
+                        return Ok(factura);
+                    else
+                        return NotFound("Factura no encontrado");
+                }
+                catch (Exception ex)
+                {
+                    return BadRequest(ex.Message);
+                }
             }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
-
-
-            //  return View();
-        }
 
 
         [HttpGet]
-        [Route("list")]
-        public ActionResult list()
+        [Route("ListarFactura")]
+        public async Task<IActionResult> List()
         {
             try
             {
-                var facturas = facturaRepository.list();
+                var facturas = await _facturaService.List();
                 if (facturas != null)
                     return Ok(facturas);
                 else
-                    return BadRequest("No hay facturas registradas");
+                    return NoContent();
             }
             catch (Exception ex)
             {
@@ -128,81 +196,21 @@ namespace api.clientes.Controllers
             }
         }
 
-        // GET: FacturaController
-        public ActionResult Index()
+        private bool EsNumeroFacturaValido(string nro_factura)
         {
-            return View();
+            string patron = @"^\d{3}-\d{3}-\d{6}$";
+            return Regex.IsMatch(nro_factura, patron);
         }
 
-        // GET: FacturaController/Details/5
-        public ActionResult Details(int id)
+        private bool EsNumero(string valor)
         {
-            return View();
-        }
-
-        // GET: FacturaController/Create
-
-
-        public ActionResult Add()
-        {
-            return View();
-        }
-
-        // POST: FacturaController/Create
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult Create(IFormCollection collection)
-        {
-            try
+            foreach (char c in valor)
             {
-                return RedirectToAction(nameof(Index));
+                if (!char.IsDigit(c))
+                    return false;
             }
-            catch
-            {
-                return View();
-            }
-        }
-
-        // GET: FacturaController/Edit/5
-        public ActionResult Edit(int id)
-        {
-            return View();
-        }
-
-        // POST: FacturaController/Edit/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult Edit(int id, IFormCollection collection)
-        {
-            try
-            {
-                return RedirectToAction(nameof(Index));
-            }
-            catch
-            {
-                return View();
-            }
-        }
-
-        // GET: FacturaController/Delete/5
-        public ActionResult Delete(int id)
-        {
-            return View();
-        }
-
-        // POST: FacturaController/Delete/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult Delete(int id, IFormCollection collection)
-        {
-            try
-            {
-                return RedirectToAction(nameof(Index));
-            }
-            catch
-            {
-                return View();
-            }
+            return true;
         }
     }
 }
+

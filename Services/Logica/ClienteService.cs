@@ -10,33 +10,77 @@ namespace Services.Logica
 {
     public class ClienteService
     {
-        ClienteRepository clienteRepository;
+       
+        private readonly ICliente _clienteRepository;
 
-        public ClienteService (string connectionString)
+        public ClienteService (ICliente clienteRepository)
         {
-            clienteRepository = new ClienteRepository(connectionString);
-        }
-        public bool add(ClienteModel modelo)
-        {
-            if (validacionCliente(modelo))
-                return clienteRepository.add(modelo);
-            else
-                return false;
+            
+            _clienteRepository = clienteRepository;
         }
 
-        public object get(string documento)
+        public async Task<bool> Add(ClienteModel cliente)
         {
-            throw new NotImplementedException();
+            try
+            {
+                return await _clienteRepository.add(cliente);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al agregar cliente", ex);
+            }
         }
 
-        public object list()
+
+        public async Task<bool> Update(ClienteModel cliente)
         {
-            throw new NotImplementedException();
+            try
+            {
+                
+                return await _clienteRepository.update(cliente);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al actualizar cliente", ex);
+            }
+        }
+        
+        public async Task<ClienteModel> Get(int id)
+        {
+            
+            try
+          {
+                return await _clienteRepository.get(id);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al obtener cliente", ex);
+            }
+
         }
 
-        public bool remove(string documento)
+        public async Task<IEnumerable<ClienteModel>> List()
         {
-            throw new NotImplementedException();
+            try
+            {
+                return await _clienteRepository.list();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al listar clientes", ex);
+            }
+        }
+
+        public async Task<bool> Remove(int id)
+        {
+            try
+            {
+                return await _clienteRepository.remove(id);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al eliminar cliente", ex);
+            }
         }
 
         private bool validacionCliente(ClienteModel cliente)
@@ -58,14 +102,6 @@ namespace Services.Logica
               
                 return false;
 
-
-            // Si todas las validaciones pasan, retornar true
-            //eturn false;
-
-
-           // if (string.IsNullOrEmpty(cliente.nombre))
-             //    return false;
-
            return true;
         }
 
@@ -78,7 +114,7 @@ namespace Services.Logica
                         return false;
                 }
                 return true;
-                //throw new NotImplementedException();
+               
             }
         }
 
