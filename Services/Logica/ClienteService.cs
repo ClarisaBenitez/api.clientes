@@ -1,26 +1,31 @@
-﻿using Repository.Data;
+﻿using FluentValidation;
+using FluentValidation.Results;
+using Repository.Data;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Services.Logica
 {
     public class ClienteService
     {
-       
         private readonly ICliente _clienteRepository;
+        private readonly IValidator<ClienteModel> _clienteValidator;
 
-        public ClienteService (ICliente clienteRepository)
+        public ClienteService(ICliente clienteRepository, IValidator<ClienteModel> clienteValidator)
         {
-            
             _clienteRepository = clienteRepository;
+            _clienteValidator = clienteValidator;
         }
 
         public async Task<bool> Add(ClienteModel cliente)
         {
+            ValidationResult validationResult = await _clienteValidator.ValidateAsync(cliente);
+            if (!validationResult.IsValid)
+            {
+                throw new FluentValidation.ValidationException(validationResult.Errors);
+            }
+
             try
             {
                 return await _clienteRepository.add(cliente);
@@ -31,12 +36,16 @@ namespace Services.Logica
             }
         }
 
-
         public async Task<bool> Update(ClienteModel cliente)
         {
+            ValidationResult validationResult = await _clienteValidator.ValidateAsync(cliente);
+            if (!validationResult.IsValid)
+            {
+                throw new FluentValidation.ValidationException(validationResult.Errors);
+            }
+
             try
             {
-                
                 return await _clienteRepository.update(cliente);
             }
             catch (Exception ex)
@@ -44,19 +53,17 @@ namespace Services.Logica
                 throw new Exception("Error al actualizar cliente", ex);
             }
         }
-        
+
         public async Task<ClienteModel> Get(int id)
         {
-            
             try
-          {
+            {
                 return await _clienteRepository.get(id);
             }
             catch (Exception ex)
             {
                 throw new Exception("Error al obtener cliente", ex);
             }
-
         }
 
         public async Task<IEnumerable<ClienteModel>> List()
@@ -81,46 +88,6 @@ namespace Services.Logica
             {
                 throw new Exception("Error al eliminar cliente", ex);
             }
-        }
-
-        private bool validacionCliente(ClienteModel cliente)
-        {
-            if (cliente == null)
-                return false;
-
-
-
-            if (string.IsNullOrWhiteSpace(cliente.nombre) || cliente.nombre.Length < 3)
-                return false;
-
-            if (string.IsNullOrWhiteSpace(cliente.apellido) || cliente.apellido.Length < 3)
-                return false;
-
-            if (string.IsNullOrWhiteSpace(cliente.documento) || cliente.documento.Length < 3)
-                return false;
-            if (string.IsNullOrWhiteSpace(cliente.celular) && (cliente.celular.Length != 10 || !EsNumero(cliente.celular)))
-              
-                return false;
-
-           return true;
-        }
-
-        private bool EsNumero(string celular)
-        {
-            {
-                foreach (char c in celular)
-                {
-                    if (!char.IsDigit(c))
-                        return false;
-                }
-                return true;
-               
-            }
-        }
-
-        public bool ValidarCelular(string celular)
-        {
-            throw new NotImplementedException();
         }
     }
 }

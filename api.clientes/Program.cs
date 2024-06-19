@@ -1,28 +1,39 @@
 using Microsoft.EntityFrameworkCore;
 using Repository.Data;
 using Services.Logica;
+using FluentValidation;
+using api.clientes.Validators;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Configurar CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAllOrigins",
+        builder =>
+        {
+            builder.AllowAnyOrigin()
+                   .AllowAnyMethod()
+                   .AllowAnyHeader();
+        });
+});
 
+// Add services to the container.
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("postgres"),
     b => b.MigrationsAssembly("Repository")));
 
-// Injeccion de dependencias
+// Inyección de dependencias
+builder.Services.AddTransient<ICliente, ClienteRepository>();
+builder.Services.AddTransient<ClienteService>();
+builder.Services.AddTransient<IValidator<ClienteModel>, ClienteValidator>();
 
 builder.Services.AddTransient<IFactura, FacturaRepository>();
 builder.Services.AddTransient<FacturaService>();
-
-// Añadir el de cliente
-builder.Services.AddTransient<ICliente, ClienteRepository>();
-builder.Services.AddTransient<ClienteService>();
-
+builder.Services.AddTransient<IValidator<FacturaModel>, FacturaValidator>();
 
 var app = builder.Build();
 
@@ -34,9 +45,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
 
-app.MapControllers();
+// Habilitar CORS
+app.UseCors("AllowAllOrigins");
 
+app.MapControllers();
 app.Run();

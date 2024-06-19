@@ -13,5 +13,6 @@ namespace Repository.Data
         Task<bool> update(ClienteModel cliente);
         Task< ClienteModel> get(int id);
         Task<IEnumerable<ClienteModel>> list();
+        Task<bool> DocumentoExiste(string documento); 
     }
 }

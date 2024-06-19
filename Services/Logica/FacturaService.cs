@@ -1,5 +1,6 @@
-﻿using System.Globalization;
-
+﻿using FluentValidation;
+using FluentValidation.Results;
+using System.Globalization;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -7,27 +8,30 @@ using Repository.Data;
 
 namespace Services.Logica
 {
-    public  class FacturaService
+    public class FacturaService
     {
         private readonly IFactura _facturaRepository;
+        private readonly IValidator<FacturaModel> _facturaValidator;
 
-        public FacturaService(IFactura facturaRepository)
+        public FacturaService(IFactura facturaRepository, IValidator<FacturaModel> facturaValidator)
         {
             _facturaRepository = facturaRepository;
+            _facturaValidator = facturaValidator;
         }
 
         public async Task<bool> Add(FacturaModel factura)
         {
+            ValidationResult validationResult = await _facturaValidator.ValidateAsync(factura);
+            if (!validationResult.IsValid)
+            {
+                throw new FluentValidation.ValidationException(validationResult.Errors);
+            }
+
             try
             {
-                if (string.IsNullOrWhiteSpace(factura.total_letras) || factura.total_letras.Length < 6)
-                {
-                    throw new ArgumentException("El campo 'Total en letras' es obligatorio y debe tener al menos 6 caracteres.");
-                }
                 factura.total_iva5 = (int)CalculateIva5(factura.total);
                 factura.total_iva10 = (int)CalculateIva10(factura.total);
                 factura.total_iva = (int)CalculateTotalIva(factura.total);
-                //factura.TotalLetras = ConvertNumberToWords((int)factura.Total);
                 return await _facturaRepository.add(factura);
             }
             catch (Exception ex)
@@ -38,12 +42,17 @@ namespace Services.Logica
 
         public async Task<bool> Update(FacturaModel factura)
         {
+            ValidationResult validationResult = await _facturaValidator.ValidateAsync(factura);
+            if (!validationResult.IsValid)
+            {
+                throw new FluentValidation.ValidationException(validationResult.Errors);
+            }
+
             try
             {
                 factura.total_iva5 = (int)CalculateIva5(factura.total);
                 factura.total_iva10 = (int)CalculateIva10(factura.total);
                 factura.total_iva = (int)CalculateTotalIva(factura.total);
-                //factura.TotalLetras = ConvertNumberToWords((int)factura.Total);
                 return await _facturaRepository.update(factura);
             }
             catch (Exception ex)
@@ -88,19 +97,17 @@ namespace Services.Logica
             }
         }
 
-        public static decimal CalculateIva5(decimal amount)
+        public static decimal CalculateIva5(int amount)
             => amount * 0.05m; // 5% de IVA
 
-        public static decimal CalculateIva10(decimal amount)
+        public static decimal CalculateIva10(int amount)
             => amount * 0.10m; // 10% de IVA
 
-        public static decimal CalculateTotalIva(decimal amount)
+        public static decimal CalculateTotalIva(int amount)
         {
             decimal iva5 = CalculateIva5(amount);
             decimal iva10 = CalculateIva10(amount);
             return iva5 + iva10;
         }
-
-       // public static string ConvertNumberToWords(int number) 
     }
 }

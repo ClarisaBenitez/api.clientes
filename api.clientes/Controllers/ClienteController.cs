@@ -2,7 +2,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Repository.Data;
 using Services.Logica;
-using System.Diagnostics.Eventing.Reader;
+using FluentValidation;
+using FluentValidation.Results;
+using System.Threading.Tasks;
 
 namespace api.clientes.Controllers
 {
@@ -10,20 +12,17 @@ namespace api.clientes.Controllers
     [Route("[controller]")]
     public class ClienteController : Controller
     {
-    
         private readonly IConfiguration _configuration;
         private readonly ClienteService _clienteService;
+        private readonly IValidator<ClienteModel> _clienteValidator;
 
-
-
-        public ClienteController(IConfiguration configuration, ClienteService clienteService)
+        public ClienteController(IConfiguration configuration, ClienteService clienteService, IValidator<ClienteModel> clienteValidator)
         {
             _configuration = configuration;
             _clienteService = clienteService;
+            _clienteValidator = clienteValidator;
         }
 
-
-        // GET: ClienteController/Create
         [HttpPost("AgregarCliente")]
         public async Task<IActionResult> Add(
             [FromQuery] int id,
@@ -36,18 +35,6 @@ namespace api.clientes.Controllers
             [FromQuery] string celular,
             [FromQuery] string estado)
         {
-            if (string.IsNullOrWhiteSpace(nombre) || nombre.Length < 3 ||
-                string.IsNullOrWhiteSpace(apellido) || apellido.Length < 3 ||
-                string.IsNullOrWhiteSpace(documento) || documento.Length < 3)
-            {
-                return BadRequest("Error al agregar cliente: Asegurese de que el nombre, apellido y documento tengan al menos 3 caracteres.");
-            }
-
-            if (string.IsNullOrWhiteSpace(celular) || celular.Length != 10 || !EsNumero(celular))
-            {
-                return BadRequest("Error al agregar cliente: El celular debe ser un número de 10 dígitos.");
-            }
-
             var cliente = new ClienteModel
             {
                 id = id,
@@ -60,6 +47,12 @@ namespace api.clientes.Controllers
                 celular = celular,
                 estado = estado
             };
+
+            ValidationResult validationResult = await _clienteValidator.ValidateAsync(cliente);
+            if (!validationResult.IsValid)
+            {
+                return BadRequest(validationResult.Errors);
+            }
 
             try
             {
@@ -74,8 +67,6 @@ namespace api.clientes.Controllers
             }
         }
 
-
-        // GET: ClienteController/Edit/5
         [HttpPut("ActualizarCliente")]
         public async Task<IActionResult> Update(
             [FromQuery] int id,
@@ -88,18 +79,6 @@ namespace api.clientes.Controllers
             [FromQuery] string celular,
             [FromQuery] string estado)
         {
-            if (string.IsNullOrWhiteSpace(nombre) || nombre.Length < 3 ||
-                string.IsNullOrWhiteSpace(apellido) || apellido.Length < 3 ||
-                string.IsNullOrWhiteSpace(documento) || documento.Length < 3)
-            {
-                return BadRequest("Error al actualizar cliente: Asegurese de que el nombre, apellido y documento tengan tener al menos 3 caracteres.");
-            }
-
-            if (string.IsNullOrWhiteSpace(celular) || celular.Length != 10 || !EsNumero(celular))
-            {
-                return BadRequest("Error al actualizar cliente: El celular debe ser un número de 10 dígitos.");
-            }
-
             var cliente = new ClienteModel
             {
                 id = id,
@@ -112,6 +91,12 @@ namespace api.clientes.Controllers
                 celular = celular,
                 estado = estado
             };
+
+            ValidationResult validationResult = await _clienteValidator.ValidateAsync(cliente);
+            if (!validationResult.IsValid)
+            {
+                return BadRequest(validationResult.Errors);
+            }
 
             try
             {
@@ -126,12 +111,7 @@ namespace api.clientes.Controllers
             }
         }
 
-
-
-        // GET: ClienteController/Delete/5
-        [HttpDelete]
-        [Route("EliminarCliente/{id}")]
-
+        [HttpDelete("EliminarCliente")]
         public async Task<IActionResult> Remove(int id)
         {
             try
@@ -147,8 +127,7 @@ namespace api.clientes.Controllers
             }
         }
 
-        [HttpGet]
-        [Route("ConsultarCliente")]
+        [HttpGet("ConsultarCliente")]
         public async Task<IActionResult> Get(int id)
         {
             try
@@ -165,8 +144,7 @@ namespace api.clientes.Controllers
             }
         }
 
-        [HttpGet]
-        [Route("ListarCliente")]
+        [HttpGet("ListarClientes")]
         public async Task<IActionResult> List()
         {
             try
@@ -182,17 +160,5 @@ namespace api.clientes.Controllers
                 return BadRequest(ex.Message);
             }
         }
-        private bool EsNumero(string celular)
-        {
-            foreach (char c in celular)
-            {
-                if (!char.IsDigit(c))
-                    return false;
-            }
-            return true;
-        }
-
-
-
     }
 }

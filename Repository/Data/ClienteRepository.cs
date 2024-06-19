@@ -1,29 +1,19 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
-using System.Data;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using Dapper;
-using Microsoft.EntityFrameworkCore;
-using Npgsql;
-
 
 namespace Repository.Data
 {
-  
-        public class ClienteRepository : ICliente
-        {
-        
+    public class ClienteRepository : ICliente
+    {
         private readonly ApplicationDbContext _context;
-       
-        public ClienteRepository(ApplicationDbContext context)
 
+        public ClienteRepository(ApplicationDbContext context)
         {
-           
             _context = context;
         }
-       
+
         public async Task<bool> add(ClienteModel cliente)
         {
             try
@@ -37,7 +27,6 @@ namespace Repository.Data
             }
         }
 
-        
         public async Task<ClienteModel> get(int id)
         {
             try
@@ -50,11 +39,6 @@ namespace Repository.Data
             }
         }
 
-                    
-
-         
-
-   
         public async Task<IEnumerable<ClienteModel>> list()
         {
             try
@@ -63,11 +47,10 @@ namespace Repository.Data
             }
             catch (Exception ex)
             {
-                throw new Exception("Error al listar las facturas", ex);
+                throw new Exception("Error al listar clientes", ex);
             }
         }
 
-      
         public async Task<bool> remove(int id)
         {
             try
@@ -84,11 +67,8 @@ namespace Repository.Data
             {
                 throw new Exception("Error al eliminar cliente", ex);
             }
-
         }
 
-
-      
         public async Task<bool> update(ClienteModel cliente)
         {
             try
@@ -100,14 +80,18 @@ namespace Repository.Data
             {
                 throw new Exception("Error al actualizar cliente", ex);
             }
-
-
         }
 
-       
-
-
-
-       
+        public async Task<bool> DocumentoExiste(string documento)
+        {
+            try
+            {
+                return await _context.ClientesEF.AnyAsync(c => c.documento == documento);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al verificar la existencia del documento", ex);
+            }
+        }
     }
 }
